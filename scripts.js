@@ -16,9 +16,13 @@ let world = {
     highestFloor: 240,
     speed: 5,
     distanceTravelled: 0,
+    autoScroll: true,
     floorTiles:[
         new floor(0, 140)
     ],
+    stop: function(){
+        this.autoScroll = false;
+    },
     moveFloor: function(){
         for(i in this.floorTiles){
             let tile = this.floorTiles[i];
@@ -47,6 +51,7 @@ let world = {
         return -1;
     },
     tick: function(){
+        if(!this.autoScroll) return;
         this.cleanOldTiles();
         this.addFutureTiles();
         this.moveFloor();
@@ -71,9 +76,18 @@ let player = {
     y: 340,
     width: 20,
     height: 20,
+    downwardForce: world.height,
+    jumpHeight: 0,
+    getDistanceFor: function(x){
+      let platformBelow = world.getDistanceToFloor(x);
+      return world.height - this.y - platformBelow;
+    },
     applyGravity: function(){
-        let platformBelow = world.getDistanceToFloor(this.x);
-        this.currentDistanceAboveGround = world.height - this.y - platformBelow;
+        this.currentDistanceAboveGround = this.getDistanceFor(this.x);
+        let rightHandSideDistance = this.getDistanceFor(this.x + this.width);
+        if(this.currentDistanceAboveGround < 0 || rightHandSideDistance < 0){
+            world.stop();
+        }
     },
     processGravity: function(){
         this.y += world.gravity;
@@ -82,6 +96,11 @@ let player = {
         if(this.y > topYofPlatform){
             this.y = topYofPlatform;
         }
+    },
+    keyPress: function(keyInfo){
+        let floorHeight = world.getDistanceToFloor(this.x, this.width);
+        let onTheFloor = floorHeight == (world.height - this.y);
+        if(onTheFloor) this.downwardForce = -8;
     },
     tick: function(){
         this.processGravity();
@@ -93,7 +112,7 @@ let player = {
     }
 };
 
-
+window.addEventListener("keypress", function(keyInfo){player.keyPress(keyInfo);}, false)
 function tick(){
     player.tick();
     world.tick();
